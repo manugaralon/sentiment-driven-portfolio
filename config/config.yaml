@@ -1,0 +1,33 @@
+# Universe chosen ex-ante (anti survivorship bias): largest market cap per GICS sector at
+# 2015-12-31, excluding conglomerates and names with spin-offs/mergers in the period.
+# Verified 2026-09-22: SEC EDGAR XBRL shares outstanding (~Jan 2016) x yfinance close 2015-12-31.
+# Market caps in USD bn; "NV" = not in the XBRL API, value from memory (large gap, safe).
+universe:
+  AAPL: Information Technology   # 584 vs MSFT 439
+  GOOGL: Communication Services  # 535 vs META ~296 (NV)
+  AMZN: Consumer Discretionary   # 318 vs HD 168
+  PG: Consumer Staples           # 215 vs WMT 196, KO ~186 (NV)
+  JNJ: Health Care               # 283 vs PFE 210
+  WFC: Financials                # 276 vs JPM 242; BRK.B excluded (conglomerate)
+  XOM: Energy                    # ~320 (NV) vs CVX 169
+  BA: Industrials                # 96 vs MMM 91; GE, MMM excluded (conglomerates with spin-offs)
+  DUK: Utilities                 # 49.1 vs NEE 47.9
+  # Materials skipped (DD/DOW merger 2017), Real Estate skipped (little news coverage).
+
+benchmark: SPY
+risk_free: ^IRX  # 13-week T-bill, annualized yield in percent
+
+dates:
+  data_start: "2015-10-01"  # warm-up before train for rolling windows
+  train: ["2016-01-01", "2021-12-31"]
+  validation: ["2022-01-01", "2023-12-31"]
+  test: ["2024-01-01", "2026-08-31"]  # opened only once, in phase 7
+
+backtest:
+  cost_bps: 10  # per dollar traded (applied to sum |w_target - w_drifted|)
+  cost_sensitivity_bps: [0, 5, 10, 25]
+  execution_lag_sessions: 1  # decide at close of t, execute at close of t+1
+
+paths:
+  close: data/raw/prices/close.parquet
+  figures: reports/figures
