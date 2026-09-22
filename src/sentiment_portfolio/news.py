@@ -1,4 +1,5 @@
 import os
+import re
 import time
 from pathlib import Path
 
@@ -83,3 +84,9 @@ def load_news(news_dir: Path, start: str, end: str, aliases: dict[str, str]) -> 
     after_last = pd.Timestamp(end, tz="UTC") + pd.Timedelta(days=1)
     df = df[(df["created_at"] >= first) & (df["created_at"] < after_last)]
     return df.sort_values("created_at").reset_index(drop=True)
+
+
+def mentions_company(headlines: pd.Series, pattern: str) -> pd.Series:
+    """True where the headline names the company (`pattern` is a regex alternation, matched
+    case-insensitively on word boundaries, e.g. "wells fargo|wfc")."""
+    return headlines.str.contains(rf"\b(?:{pattern})\b", flags=re.IGNORECASE, regex=True)

@@ -49,4 +49,17 @@ Referencias (inspiración, no plantilla que haya que respetar):
   - Convención del motor: la cartera se forma al cierre de la primera ejecución sin coste (igual para todas las estrategias) y los resultados empiezan en la sesión siguiente. Coste = c·Σ|Δw|; el turnover solo cuenta rebalanceos.
   - Train (Sharpe): EW 0,97 y SPY 0,98. Validación: EW 0,29 y SPY 0,00. El coste pesa poco en EW: el Sharpe pasa de 0,81 a 0,79 entre 0 y 25 pb.
   - Los precios de 2024–2026 están en disco, pero ningún script los lee todavía (cortan en el fin de validación).
-- Fase actual: 2 (descarga de noticias de Alpaca y EDA). Necesita las claves de Alpaca en `.env`.
+- Fase 2 (noticias), en curso. Decisiones del 2026-09-22:
+  - Verificado: Alpaca filtra `start`/`end` por `updated_at`, no por `created_at`. Se descarga hasta el mes actual y se filtra por `created_at` al cargar.
+  - Verificado: una sola petición con todos los tickers devuelve exactamente la unión de las peticiones individuales.
+  - Cobertura muy desigual: AAPL, AMZN y GOOGL tienen más de 100 artículos al mes; PG entre 1 y 14 y DUK entre 0 y 2. **Los tickers sin noticias en la ventana reciben z = 0 (peso EW)**, y el z-score se calcula solo entre los que tienen noticias; así se evita infraponderar por falta de cobertura. El universo se mantiene.
+  - Descarga completa: 88.451 artículos (2015-10 → 2026-09, 17 MB), en 26 min. En train + validación hay 59.640 únicos.
+  - EDA (`scripts/news_eda.py`, solo train + validación). Decisiones:
+    - **Relevancia:** el titular nombra a la empresa **y** el artículo lleva ≤ 5 símbolos (`news.max_symbols`). Conserva el 91 % de los artículos con nombre y descarta las listas ("Top 10 stocks…").
+    - **Timestamp de disponibilidad = `updated_at`, no `created_at`:** el titular que tenemos es la versión editada. Descartar los editados sería en sí una selección con look-ahead. Solo retrasa unas horas un ~2 % de artículos (un 4 % en 2023). Es más estricto que el plan original.
+    - Cobertura (% de sesiones con al menos una noticia relevante): AAPL 95, AMZN 92, GOOGL 79, BA 69, JNJ 46, XOM 44, WFC 38, PG 20 y DUK 17. Crece con el tiempo y con los eventos (737 MAX, vacuna, 2022 energía).
+    - Horas ET: 34 % preapertura, 52 % en sesión, 10,5 % tras el cierre y 4 % en fin de semana. La zona horaria es correcta (los "pre-market" tienen mediana a las 8 h).
+    - Boilerplate: ratings de analistas 7,5 %, "options activity" 4 % y earnings 8 %. No se excluye ninguna categoría; las listas ya caen por el filtro de símbolos.
+    - Se mantienen el inicio en 2016-01 y el grid N ∈ {5, 10, 20}.
+- Fase actual: 3 (FinBERT con caché y alineación temporal con tests).
+  - Hook de pre-commit activado (`.claude/quality-gate-precommit`, ignorado en git). Su lint se salta porque ruff no está en el PATH global.

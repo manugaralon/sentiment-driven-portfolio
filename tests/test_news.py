@@ -1,7 +1,7 @@
 import pandas as pd
 
 from sentiment_portfolio import news
-from sentiment_portfolio.news import fetch_news, load_news, to_frame
+from sentiment_portfolio.news import fetch_news, load_news, mentions_company, to_frame
 
 
 def article(id_, created, updated=None, headline="h", symbols=("AAPL",)):
@@ -81,3 +81,11 @@ def test_load_news_dedupes_maps_aliases_and_filters_on_created_at(tmp_path):
     assert df["id"].tolist() == [1, 3]
     assert df.loc[df["id"] == 1, "headline"].item() == "edited"  # latest update wins
     assert df.loc[df["id"] == 3, "symbols"].item() == ["AAPL", "GOOGL"]
+
+
+def test_mentions_company_uses_word_boundaries():
+    headlines = pd.Series(
+        ["Apple's iPhone sales", "Pineapple futures", "PG&E files for bankruptcy", "P&G raises guidance"]
+    )
+    assert mentions_company(headlines, "apple|aapl").tolist() == [True, False, False, False]
+    assert mentions_company(headlines, "procter|p&g").tolist() == [False, False, False, True]

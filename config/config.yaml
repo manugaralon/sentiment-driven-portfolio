@@ -26,6 +26,21 @@ dates:
 news:
   # Alpaca returns articles tagged with ANY of universe + alias symbols; aliases are mapped on load.
   aliases: {GOOG: GOOGL}
+  # Company named in the headline (regex, case-insensitive, word boundaries). Bare tickers that
+  # are ambiguous are left out: "PG" also matches "PG&E", "BA" matches too much.
+  names:
+    AAPL: "apple|aapl"
+    GOOGL: "alphabet|google|googl?"
+    AMZN: "amazon|amzn"
+    PG: "procter|p&g"
+    JNJ: "johnson & johnson|johnson and johnson|j&j|jnj"
+    WFC: "wells fargo|wfc"
+    XOM: "exxon|exxonmobil|xom"
+    BA: "boeing"
+    DUK: "duke energy|duk"
+  # An article is relevant for a ticker if it names the company AND is tagged with at most this
+  # many symbols (more are almost always lists: "Top 10 stocks to watch: AAPL, AMZN, ..."). EDA 2026-09-22.
+  max_symbols: 5
 
 backtest:
   cost_bps: 10  # per dollar traded (applied to sum |w_target - w_drifted|)

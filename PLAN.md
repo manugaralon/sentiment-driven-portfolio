@@ -92,11 +92,14 @@ Leyenda: **[V]** comprobado hoy en la documentación o el código. **[NV]** no v
 - **Timing: diario, con rebalanceo semanal (lo mantengo).**
   - Un artículo entra en la información de la sesión t si `created_at` < cierre de t en hora ET. Uso el calendario NYSE real, con festivos y medias sesiones de cierre a las 13:00.
   - Lo publicado después del cierre y en fin de semana pasa a la siguiente sesión.
+  - **Corrección (EDA, fase 2):** el timestamp que se compara con el cierre es `updated_at`, no `created_at`. El titular descargado es la versión editada, así que solo estaba disponible desde `updated_at`.
   - La decisión se toma al cierre de la última sesión de la semana y se **ejecuta al cierre de la sesión siguiente**. Es conservador y solo necesita el cierre ajustado.
 - **Señal:**
   - Puntuación por titular: P_pos − P_neg vía `id2label`. Solo el titular.
   - Se descartan los artículos etiquetados con más de K=3 símbolos (listas de valores). K se revisa en el EDA.
+  - **Decidido en el EDA:** un artículo es relevante para un ticker si el titular nombra a la empresa **y** lleva ≤ 5 símbolos.
   - Por ticker: media de las puntuaciones de los artículos de las últimas N sesiones (0 si no hay noticias), y después z-score transversal recortado a ±2.
+  - **Corrección (fase 2):** los tickers sin noticias en la ventana reciben z = 0 y el z-score se calcula solo entre los que tienen noticias. Si no, S = 0 comparado con una media positiva infraponderaría sistemáticamente a los tickers con poca cobertura (DUK, PG).
 - **Regla (b):**
   - w_i = (1/n)·(1 + λ·z_i), recortado a [0,5/n, 2/n] y renormalizado. Long-only y totalmente invertido.
   - Grid de 9 combinaciones: N ∈ {5, 10, 20} y λ ∈ {0,25, 0,5, 1}. Se elige en train, se confirma en validación y se reporta el grid entero, no solo el mejor.
