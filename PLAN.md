@@ -82,6 +82,7 @@ Leyenda: **[V]** comprobado hoy en la documentación o el código. **[NV]** no v
 - **Universo (cambio): elegido ex-ante, no con los grandes de hoy.** Con los grandes de hoy, el universo son ganadores ex-post, y eso premia cualquier señal correlacionada con "a esta empresa le va bien" (las noticias positivas). Es sesgo de supervivencia que favorece justo a nuestra estrategia.
   - Regla: la mayor capitalización de cada sector GICS a 2016-01, excluyendo conglomerados y empresas con spin-offs o fusiones grandes en el periodo (complican los precios ajustados).
   - Propuesta, 9 nombres: **AAPL, GOOGL, AMZN, PG, JNJ, JPM, XOM, BA, DUK o NEE**.
+  - **Verificado en la fase 1 (SEC EDGAR × cierre 2015-12-31): WFC (276 bn) sustituye a JPM (242 bn) y DUK (49,1) gana a NEE (47,9).** Universo final: AAPL, GOOGL, AMZN, PG, JNJ, WFC, XOM, BA y DUK.
   - Quedan fuera BRK.B, GE y MMM por conglomerados; Materials por fusiones (DD/DOW); y Real Estate por tener poca cobertura.
   - El ranking exacto a 2016-01 lo verifico en la fase 1 [NV].
 - **Periodo y split:**

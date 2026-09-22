@@ -39,10 +39,14 @@ Referencias (inspiración, no plantilla que haya que respetar):
 - Fase 0 (planificación): HECHA el 2026-09-22. El plan completo está en `PLAN.md`.
 - Decisiones clave (detalle y motivos en PLAN.md §3 y §6):
   - Noticias: Alpaca News API (Benzinga), de 2016-01 a 2026-08, con `created_at` UTC. FNSPID se descartó por timestamps poco fiables y porque termina en 2023.
-  - Universo ex-ante (anti-supervivencia), 9 nombres: AAPL, GOOGL, AMZN, PG, JNJ, JPM, XOM, BA y DUK o NEE (el ranking a 2016-01 está pendiente de verificar).
+  - Universo ex-ante (anti-supervivencia), verificado con SEC EDGAR: AAPL, GOOGL, AMZN, PG, JNJ, WFC, XOM, BA y DUK. WFC sustituye a JPM porque era mayor a 2015-12.
   - Split: train 2016–2021, validación 2022–2023, test 2024-01 → 2026-08. El test se abre una sola vez, en la fase 7.
   - Timing: noticias con `created_at` anterior al cierre NYSE de t entran en t. La decisión se toma el último día de la semana y se ejecuta al cierre de la sesión siguiente.
   - Señal: P_pos − P_neg del titular (vía `id2label`), media de N sesiones y z-score transversal. Regla de tilt con límites [0,5/n, 2/n].
   - Costes de 10 pb por dólar negociado. Sharpe sobre `^IRX`. Controles: placebo y momentum.
   - PPO (fase 6) fuera del MVP; solo entra si pasa la puerta (IC con t > 2 y el tilt bate a EW en validación).
-- Fase actual: 1 (esqueleto, precios, motor de backtest y baselines), en curso.
+- Fase 1 (esqueleto, precios, motor y baselines): HECHA el 2026-09-22.
+  - Convención del motor: la cartera se forma al cierre de la primera ejecución sin coste (igual para todas las estrategias) y los resultados empiezan en la sesión siguiente. Coste = c·Σ|Δw|; el turnover solo cuenta rebalanceos.
+  - Train (Sharpe): EW 0,97 y SPY 0,98. Validación: EW 0,29 y SPY 0,00. El coste pesa poco en EW: el Sharpe pasa de 0,81 a 0,79 entre 0 y 25 pb.
+  - Los precios de 2024–2026 están en disco, pero ningún script los lee todavía (cortan en el fin de validación).
+- Fase actual: 2 (descarga de noticias de Alpaca y EDA). Necesita las claves de Alpaca en `.env`.
