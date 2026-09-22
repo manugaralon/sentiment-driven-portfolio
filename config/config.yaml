@@ -23,6 +23,10 @@ dates:
   validation: ["2022-01-01", "2023-12-31"]
   test: ["2024-01-01", "2026-08-31"]  # opened only once, in phase 7
 
+news:
+  # Alpaca returns articles tagged with ANY of universe + alias symbols; aliases are mapped on load.
+  aliases: {GOOG: GOOGL}
+
 backtest:
   cost_bps: 10  # per dollar traded (applied to sum |w_target - w_drifted|)
   cost_sensitivity_bps: [0, 5, 10, 25]
@@ -30,4 +34,5 @@ backtest:
 
 paths:
   close: data/raw/prices/close.parquet
+  news: data/raw/news
   figures: reports/figures
