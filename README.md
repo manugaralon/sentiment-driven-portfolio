@@ -14,8 +14,11 @@ Linux / macOS:
 ```bash
 python3.11 -m venv .venv
 source .venv/bin/activate
+python -m pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
 python -m pip install -r requirements.txt
 ```
+
+(On Linux the default `torch` wheel bundles CUDA, several GB; the CPU build is enough here.)
 
 Windows (PowerShell):
 
@@ -27,10 +30,15 @@ python -m pip install -r requirements.txt
 
 ## Pipeline
 
+Copy `.env.example` to `.env` and add free Alpaca paper-account keys (news API).
+
 ```bash
 python scripts/download_prices.py   # adjusted closes -> data/raw/prices/close.parquet
 python scripts/run_backtest.py      # baselines on train + validation -> reports/figures/
-pytest
+python scripts/download_news.py     # Alpaca/Benzinga news, monthly chunks (~30 min, resumable)
+python scripts/news_eda.py          # coverage, relevance, timestamps -> reports/figures/
+python scripts/score_news.py        # FinBERT scores, cached on disk (~1 h on CPU, resumable)
+pytest                              # fast tests; `pytest -m slow` also loads the real FinBERT
 ```
 
 ## Design choices so far
@@ -41,4 +49,11 @@ pytest
 - **Timing**: weights decided at the close of the last session of each week are executed at the
   close of the next session. Between rebalances weights drift with prices; costs are charged on
   the dollars actually traded (10 bps by default).
+- **News availability**: an article can only inform the decision of the first NYSE session that
+  closes strictly after its `updated_at` time (the headline we hold is the edited version). The real
+  calendar is used, including 13:00 early closes and daylight-saving changes.
+- **Relevance**: an article counts for a ticker if the headline names the company and it is tagged
+  with at most 5 symbols (more are lists of stocks).
+- **FinBERT** (pinned revision) scores each headline as P(positive) - P(negative); labels are read
+  from the model config, never hard-coded.
 - **Test period (2024-01 to 2026-08) is untouched** until the final evaluation.

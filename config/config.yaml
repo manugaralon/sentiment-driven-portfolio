@@ -42,6 +42,13 @@ news:
   # many symbols (more are almost always lists: "Top 10 stocks to watch: AAPL, AMZN, ..."). EDA 2026-09-22.
   max_symbols: 5
 
+finbert:
+  model: ProsusAI/finbert
+  revision: 4556d13015211d73dccd3fdd39d39232506f3e43  # pinned 2026-09-22 (id2label: 0 pos, 1 neg, 2 neu)
+  max_length: 64  # tokens; headlines have median 19, p99 58 (0.9% truncated)
+  batch_size: 16  # with length-sorted batches: ~14 headlines/s on this 4-core VM
+  chunk_size: 1000  # the cache is saved after every chunk (resumable)
+
 backtest:
   cost_bps: 10  # per dollar traded (applied to sum |w_target - w_drifted|)
   cost_sensitivity_bps: [0, 5, 10, 25]
@@ -50,4 +57,5 @@ backtest:
 paths:
   close: data/raw/prices/close.parquet
   news: data/raw/news
+  finbert_cache: data/cache/finbert
   figures: reports/figures

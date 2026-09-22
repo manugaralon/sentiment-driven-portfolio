@@ -10,15 +10,9 @@ import numpy as np
 import pandas as pd
 
 from sentiment_portfolio.config import load_config, project_path
-from sentiment_portfolio.news import load_news, mentions_company
+from sentiment_portfolio.news import HEADLINE_CATEGORIES, load_news, ticker_rows
 
 INK, INK_MUTED, SURFACE, GRID, BAR = "#0b0b0b", "#52514e", "#fcfcfb", "#e4e3df", "#2a78d6"
-CATEGORIES = {
-    "analyst rating": r"\b(?:maintains|upgrades?|downgrades?|initiates|reiterates|price target)\b",
-    "options activity": r"options activity|unusual options|whale",
-    "movers lists": r"stocks moving|biggest movers|mid-day|pre-market session|after-hours session|52-week",
-    "earnings": r"\b(?:earnings|eps|q[1-4]|quarter(?:ly)?)\b",
-}
 
 
 def style(ax) -> None:
@@ -29,19 +23,6 @@ def style(ax) -> None:
         ax.spines[side].set_visible(False)
     for side in ("left", "bottom"):
         ax.spines[side].set_color("#c9c8c2")
-
-
-def ticker_rows(news: pd.DataFrame, names: dict[str, str]) -> pd.DataFrame:
-    """One row per (article, universe ticker it is tagged with), with the relevance flags."""
-    rows = news.assign(ticker=news["symbols"].map(lambda s: [t for t in s if t in names]))
-    rows = rows.explode("ticker").dropna(subset=["ticker"])
-    rows["n_symbols"] = rows["symbols"].map(len)
-    rows["named"] = False
-    for ticker, pattern in names.items():
-        mask = rows["ticker"] == ticker
-        rows.loc[mask, "named"] = mentions_company(rows.loc[mask, "headline"], pattern)
-    rows["date_et"] = rows["created_at"].dt.tz_convert("America/New_York").dt.tz_localize(None).dt.normalize()
-    return rows
 
 
 def coverage(rows: pd.DataFrame, sessions: pd.DatetimeIndex, figures) -> None:
@@ -159,7 +140,7 @@ def edits(news: pd.DataFrame) -> None:
 
 def boilerplate(news: pd.DataFrame, rows: pd.DataFrame) -> None:
     print("\n== 5. Boilerplate: % of articles per headline category ==")
-    for name, pattern in CATEGORIES.items():
+    for name, pattern in HEADLINE_CATEGORIES.items():
         print(f"  {name:17s} {news['headline'].str.contains(pattern, case=False, regex=True).mean():6.1%}")
     dup = rows.assign(h=rows["headline"].str.lower()).duplicated(["ticker", "date_et", "h"]).mean()
     print(f"Duplicate headlines (same ticker, same ET date): {dup:.1%}")
@@ -175,7 +156,8 @@ def main() -> None:
     figures = project_path(cfg["paths"]["figures"])
     print(f"{len(news)} unique articles created {start} -> {end}")
 
-    rows = ticker_rows(news, names)
+    rows = ticker_rows(news, names, cfg["news"]["max_symbols"])
+    rows["date_et"] = rows["created_at"].dt.tz_convert("America/New_York").dt.tz_localize(None).dt.normalize()
     coverage(rows, sessions, figures)
     relevance(rows)
     timestamps(news, figures)

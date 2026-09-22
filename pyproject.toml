@@ -12,6 +12,8 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["slow: loads the real FinBERT model (~45 s); run with `pytest -m slow`"]
+addopts = "-m 'not slow'"
 
 [tool.ruff]
 line-length = 110

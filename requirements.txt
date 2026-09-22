@@ -6,6 +6,9 @@ PyYAML==6.0.3
 python-dotenv==1.2.3
 requests==2.34.2
 matplotlib==3.11.2
+pandas_market_calendars==5.4.0
+torch==2.14.0  # Linux: install the CPU build first (see README)
+transformers==5.17.0
 pytest==9.1.1
 ruff==0.16.8
 -e .

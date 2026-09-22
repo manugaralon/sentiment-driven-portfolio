@@ -1,7 +1,7 @@
 import pandas as pd
 
 from sentiment_portfolio import news
-from sentiment_portfolio.news import fetch_news, load_news, mentions_company, to_frame
+from sentiment_portfolio.news import fetch_news, load_news, mentions_company, ticker_rows, to_frame
 
 
 def article(id_, created, updated=None, headline="h", symbols=("AAPL",)):
@@ -89,3 +89,31 @@ def test_mentions_company_uses_word_boundaries():
     )
     assert mentions_company(headlines, "apple|aapl").tolist() == [True, False, False, False]
     assert mentions_company(headlines, "procter|p&g").tolist() == [False, False, False, True]
+
+
+def test_ticker_rows_flags_relevant_articles():
+    news = to_frame(
+        [
+            article(
+                1,
+                "2020-01-02T10:00:00Z",
+                headline="Apple and Amazon sign a deal",
+                symbols=("AAPL", "AMZN", "XYZ"),
+            ),
+            article(
+                2,
+                "2020-01-02T11:00:00Z",
+                headline="Top stocks: Apple, Tesla",
+                symbols=list("ABCDEF") + ["AAPL"],
+            ),
+            article(3, "2020-01-02T12:00:00Z", headline="Markets fall on oil", symbols=("AAPL",)),
+        ]
+    )
+    rows = ticker_rows(news, {"AAPL": "apple", "AMZN": "amazon"}, max_symbols=5)
+    relevant = rows.set_index(["id", "ticker"])["relevant"]
+    assert relevant.to_dict() == {
+        (1, "AAPL"): True,
+        (1, "AMZN"): True,
+        (2, "AAPL"): False,
+        (3, "AAPL"): False,
+    }

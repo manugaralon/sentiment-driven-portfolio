@@ -11,6 +11,12 @@ from sentiment_portfolio.config import ROOT
 
 NEWS_URL = "https://data.alpaca.markets/v1beta1/news"
 FIELDS = ["id", "created_at", "updated_at", "headline", "summary", "symbols", "source", "url"]
+HEADLINE_CATEGORIES = {  # recurring Benzinga templates, for EDA and quality checks
+    "analyst rating": r"\b(?:maintains|upgrades?|downgrades?|initiates|reiterates|price target)\b",
+    "options activity": r"options activity|unusual options|whale",
+    "movers lists": r"stocks moving|biggest movers|mid-day|pre-market session|after-hours session|52-week",
+    "earnings": r"\b(?:earnings|eps|q[1-4]|quarter(?:ly)?)\b",
+}
 
 
 def alpaca_headers() -> dict[str, str]:
@@ -90,3 +96,20 @@ def mentions_company(headlines: pd.Series, pattern: str) -> pd.Series:
     """True where the headline names the company (`pattern` is a regex alternation, matched
     case-insensitively on word boundaries, e.g. "wells fargo|wfc")."""
     return headlines.str.contains(rf"\b(?:{pattern})\b", flags=re.IGNORECASE, regex=True)
+
+
+def ticker_rows(news: pd.DataFrame, names: dict[str, str], max_symbols: int) -> pd.DataFrame:
+    """One row per (article, universe ticker it is tagged with).
+
+    `relevant`: the headline names the company and the article is tagged with at most
+    `max_symbols` symbols (more are almost always lists of stocks).
+    """
+    rows = news.assign(ticker=news["symbols"].map(lambda syms: [t for t in syms if t in names]))
+    rows = rows.explode("ticker").dropna(subset=["ticker"])
+    rows["n_symbols"] = rows["symbols"].map(len)
+    rows["named"] = False
+    for ticker, pattern in names.items():
+        mask = rows["ticker"] == ticker
+        rows.loc[mask, "named"] = mentions_company(rows.loc[mask, "headline"], pattern)
+    rows["relevant"] = rows["named"] & (rows["n_symbols"] <= max_symbols)
+    return rows
