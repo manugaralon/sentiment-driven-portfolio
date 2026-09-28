@@ -35,13 +35,15 @@ def scored_rows(cfg: dict) -> pd.DataFrame:
 
 
 def coverage_table(count: pd.DataFrame, score_sum: pd.DataFrame, signals: dict, n: int) -> pd.DataFrame:
-    return pd.DataFrame({
-        "% sessions with news": (count > 0).mean() * 100,
-        "articles/session": count.mean(),
-        "mean score": score_sum.sum() / count.sum(),
-        f"% z != 0 (raw, N={n})": (signals[("raw", n)] != 0).mean() * 100,
-        f"% z != 0 (surprise, N={n})": (signals[("surprise", n)] != 0).mean() * 100,
-    }).round(2)
+    return pd.DataFrame(
+        {
+            "% sessions with news": (count > 0).mean() * 100,
+            "articles/session": count.mean(),
+            "mean score": score_sum.sum() / count.sum(),
+            f"% z != 0 (raw, N={n})": (signals[("raw", n)] != 0).mean() * 100,
+            f"% z != 0 (surprise, N={n})": (signals[("surprise", n)] != 0).mean() * 100,
+        }
+    ).round(2)
 
 
 def ic_table(signals: dict, targets: dict) -> pd.DataFrame:
@@ -66,8 +68,15 @@ def plot_ic(table: pd.DataFrame, path) -> None:
         for i, variant in enumerate(COLORS):
             rows = sub.loc[variant].loc[windows]
             x = np.arange(len(windows)) + (i - 0.5) * 0.3
-            ax.errorbar(x, rows["mean"], yerr=1.96 * rows["se"], fmt="o", color=COLORS[variant], capsize=3,
-                        label=variant)
+            ax.errorbar(
+                x,
+                rows["mean"],
+                yerr=1.96 * rows["se"],
+                fmt="o",
+                color=COLORS[variant],
+                capsize=3,
+                label=variant,
+            )
         ax.axhline(0, color=INK_MUTED, lw=0.8)
         ax.set_xticks(range(len(windows)), [f"N={n}" for n in windows])
         ax.set_title(f"{kind} return, h={h}", color=INK, fontsize=10, loc="left")
@@ -91,8 +100,9 @@ def main() -> None:
     closes = session_closes(dates["data_start"], dates["test"][1])
 
     signals = {
-        (variant, n): build_signal(rows, closes, tickers, n, variant == "surprise", sig["min_history"],
-                                   sig["min_names"])
+        (variant, n): build_signal(
+            rows, closes, tickers, n, variant == "surprise", sig["min_history"], sig["min_names"]
+        )
         for variant in ("raw", "surprise")
         for n in sig["windows"]
     }
@@ -114,8 +124,10 @@ def main() -> None:
     print("\n== Coverage by ticker (train sessions) ==")
     print(coverage_table(count.loc[first:last], score_sum.loc[first:last], train, mid).to_string())
 
-    targets = {("forward", h): forward_returns(returns, h, cfg["backtest"]["execution_lag_sessions"])
-               for h in sig["ic_horizons"]}
+    targets = {
+        ("forward", h): forward_returns(returns, h, cfg["backtest"]["execution_lag_sessions"])
+        for h in sig["ic_horizons"]
+    }
     targets |= {("past", h): past_returns(returns, h) for h in (5, 20)}
     table = ic_table(train, targets)
     print("\n== Mean daily IC, train (Newey-West, lag = h + N) ==")

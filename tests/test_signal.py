@@ -13,11 +13,13 @@ CLOSES = session_closes("2019-01-01", "2019-12-31")
 def random_rows(n: int = 3000, seed: int = 0) -> pd.DataFrame:
     rng = np.random.default_rng(seed)
     start = pd.Timestamp("2019-01-01", tz="UTC")
-    return pd.DataFrame({
-        "updated_at": start + pd.to_timedelta(rng.integers(0, 364 * 24 * 3600, n), unit="s"),
-        "ticker": rng.choice(TICKERS, n),
-        "score": rng.uniform(-1, 1, n),
-    })
+    return pd.DataFrame(
+        {
+            "updated_at": start + pd.to_timedelta(rng.integers(0, 364 * 24 * 3600, n), unit="s"),
+            "ticker": rng.choice(TICKERS, n),
+            "score": rng.uniform(-1, 1, n),
+        }
+    )
 
 
 @pytest.mark.parametrize("n, surprise", [(5, False), (20, False), (5, True), (20, True)])
@@ -36,15 +38,21 @@ def test_signal_up_to_t_ignores_news_after_t(n, surprise):
 def test_panel_has_zeros_not_gaps_on_sessions_without_news():
     # A ticker without news on a session where others have some must count 0, not NaN:
     # a NaN would break the cumulative baseline of the surprise variant.
-    rows = pd.DataFrame({
-        "updated_at": pd.to_datetime(["2019-03-04 15:00", "2019-03-05 15:00"], utc=True),
-        "ticker": ["A", "B"],
-        "score": [0.5, -0.5],
-    })
+    rows = pd.DataFrame(
+        {
+            "updated_at": pd.to_datetime(["2019-03-04 15:00", "2019-03-05 15:00"], utc=True),
+            "ticker": ["A", "B"],
+            "score": [0.5, -0.5],
+        }
+    )
     score_sum, count = daily_panel(rows, CLOSES, TICKERS)
     assert count.notna().all().all() and score_sum.notna().all().all()
-    assert count.loc["2019-03-04":"2019-03-05"].to_dict("list") == {"A": [1, 0], "B": [0, 1], "C": [0, 0],
-                                                                   "D": [0, 0]}
+    assert count.loc["2019-03-04":"2019-03-05"].to_dict("list") == {
+        "A": [1, 0],
+        "B": [0, 1],
+        "C": [0, 0],
+        "D": [0, 0],
+    }
 
 
 def test_window_mean_weights_articles_not_days():

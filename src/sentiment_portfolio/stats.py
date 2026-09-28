@@ -38,4 +38,34 @@ def newey_west_mean(x: pd.Series, lags: int) -> dict[str, float]:
     for k in range(1, lags + 1):
         variance += 2 * (1 - k / (lags + 1)) * (e[k:] @ e[:-k]) / n
     se = np.sqrt(variance / n)
-    return {"mean": mean, "se": se, "t": mean / se, "lo95": mean - 1.96 * se, "hi95": mean + 1.96 * se, "n": n}
+    return {
+        "mean": mean,
+        "se": se,
+        "t": mean / se,
+        "lo95": mean - 1.96 * se,
+        "hi95": mean + 1.96 * se,
+        "n": n,
+    }
+
+
+def sharpe_diff_bootstrap(
+    a: pd.Series, b: pd.Series, rf: pd.Series, block: int = 20, reps: int = 2000, seed: int = 0
+) -> np.ndarray:
+    """Moving-block bootstrap of the annualized Sharpe difference a - b. Days are resampled in
+    blocks and in pairs (same days for a and b), which keeps both the autocorrelation and the
+    ~0.9+ correlation between the two strategies; that pairing is what makes the test sharp."""
+    excess = np.column_stack([a - rf.loc[a.index], b - rf.loc[a.index]])
+    n = len(excess)
+    rng = np.random.default_rng(seed)
+    starts = rng.integers(0, n - block + 1, size=(reps, -(-n // block)))
+    idx = (starts[:, :, None] + np.arange(block)).reshape(reps, -1)[:, :n]
+    sample = excess[idx]  # reps x n x 2
+    sharpe = sample.mean(axis=1) / sample.std(axis=1, ddof=1) * np.sqrt(252)
+    return sharpe[:, 0] - sharpe[:, 1]
+
+
+def permute_across_tickers(signal: pd.DataFrame, rng: np.random.Generator) -> pd.DataFrame:
+    """Placebo: on each date, the same signal values handed to tickers at random. Keeps the
+    signal's distribution and timing, destroys which company it belongs to."""
+    values = rng.permuted(signal.to_numpy(), axis=1)
+    return pd.DataFrame(values, index=signal.index, columns=signal.columns)

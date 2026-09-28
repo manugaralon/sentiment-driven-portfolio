@@ -34,11 +34,11 @@ Copy `.env.example` to `.env` and add free Alpaca paper-account keys (news API).
 
 ```bash
 python scripts/download_prices.py   # adjusted closes -> data/raw/prices/close.parquet
-python scripts/run_backtest.py      # baselines on train + validation -> reports/figures/
 python scripts/download_news.py     # Alpaca/Benzinga news, monthly chunks (~30 min, resumable)
 python scripts/news_eda.py          # coverage, relevance, timestamps -> reports/figures/
 python scripts/score_news.py        # FinBERT scores, cached on disk (~1 h on CPU, resumable)
 python scripts/build_signal.py      # daily signal panel + IC analysis on train -> reports/figures/
+python scripts/run_backtest.py      # baselines, tilt grid and controls on train + validation
 pytest                              # fast tests; `pytest -m slow` also loads the real FinBERT
 ```
 
@@ -61,4 +61,8 @@ pytest                              # fast tests; `pytest -m slow` also loads th
   tickers; tickers without news get z = 0 (equal weight). A "surprise" variant first subtracts each
   ticker's own mean score from before the window, so a company with always-upbeat coverage is not
   permanently overweighted. A truncation test checks the signal up to T ignores news after T.
+- **Tilt rule**: w_i = (1 + λ·z_i)/n with z capped at ±2, projected onto weights in [0.5/n, 2/n]
+  that sum to 1 (long-only; λ = 0 is exactly equal weight). N and λ are picked on train by
+  information ratio vs equal weight, the whole grid is reported, and validation is judged against
+  a placebo (signal shuffled across tickers), a momentum tilt and a paired block bootstrap.
 - **Test period (2024-01 to 2026-08) is untouched** until the final evaluation.

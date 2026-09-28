@@ -3,7 +3,9 @@ import pandas as pd
 from sentiment_portfolio.alignment import assign_session
 
 
-def daily_panel(rows: pd.DataFrame, closes: pd.Series, tickers: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
+def daily_panel(
+    rows: pd.DataFrame, closes: pd.Series, tickers: list[str]
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Sum of scores and article count per (session, ticker). Each article goes to the first
     session that closes after its `updated_at` (the headline we have is the edited version)."""
     session = assign_session(rows["updated_at"], closes)
@@ -14,8 +16,9 @@ def daily_panel(rows: pd.DataFrame, closes: pd.Series, tickers: list[str]) -> tu
     return score_sum, count
 
 
-def raw_sentiment(score_sum: pd.DataFrame, count: pd.DataFrame, n: int, surprise: bool = False,
-                  min_history: int = 20) -> pd.DataFrame:
+def raw_sentiment(
+    score_sum: pd.DataFrame, count: pd.DataFrame, n: int, surprise: bool = False, min_history: int = 20
+) -> pd.DataFrame:
     """Mean article score over the last `n` sessions (NaN without articles).
 
     With `surprise`, each ticker's own mean score over all articles BEFORE the window is
@@ -38,8 +41,15 @@ def cross_sectional_z(raw: pd.DataFrame, min_names: int = 3) -> pd.DataFrame:
     return z.where(enough, axis=0).fillna(0.0)
 
 
-def build_signal(rows: pd.DataFrame, closes: pd.Series, tickers: list[str], n: int, surprise: bool = False,
-                 min_history: int = 20, min_names: int = 3) -> pd.DataFrame:
+def build_signal(
+    rows: pd.DataFrame,
+    closes: pd.Series,
+    tickers: list[str],
+    n: int,
+    surprise: bool = False,
+    min_history: int = 20,
+    min_names: int = 3,
+) -> pd.DataFrame:
     """Signal known at the close of each session: news -> daily panel -> window mean -> z."""
     score_sum, count = daily_panel(rows, closes, tickers)
     return cross_sectional_z(raw_sentiment(score_sum, count, n, surprise, min_history), min_names)

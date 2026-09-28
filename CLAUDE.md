@@ -72,4 +72,10 @@ Referencias (inspiración, no plantilla que haya que respetar):
   - Bug corregido: `unstack()` dejaba NaN en lugar de 0 en el panel y apagaba la variante sorpresa.
   - Resultado en train: IC a futuro ≈ 0 y **negativo en las 18 combinaciones**. El mejor es surprise N=5, h=20, con −0,05 y t = −2,7. Con la rentabilidad **pasada** es fuertemente positivo (+0,09 a +0,17, t de 5 a 8): las noticias van detrás del precio. La rentabilidad pasada por sí sola no predice (|t| < 1,7), así que el signo negativo no es reversión de precio.
   - Decisión para la fase 5 (2026-09-28): **no se invierte el signo** (sería data snooping). La fase 5 sigue el plan, con tilt positivo y el grid completo; lo esperado es que no bata a EW. El tilt contrario (λ < 0) va solo como análisis exploratorio etiquetado, confirmado en validación, y no cuenta para la puerta de la fase 6. Variante: **sorpresa**, por diseño (evita el tilt fijo hacia DUK y JNJ), no por su IC.
-- Fase actual: 5 (estrategia de tilt en train y validación).
+- Fase 5 (tilt en train y validación): HECHA el 2026-09-28. `strategies.tilt` proyecta sobre [0,5/n, 2/n] con suma 1 (desplazamiento por bisección, no recortar y renormalizar). Todo en `scripts/run_backtest.py`; los parámetros, en `config.yaml` → `strategy`.
+  - Train: **las 9 combinaciones del grid pierden contra EW** (IR de −0,84 a −1,18). La elegida (la menos mala) es N=10, λ=0,25: Sharpe 0,90 frente a 0,97 de EW; ΔSharpe −0,075 con IC95 [−0,16, −0,01]; turnover 4,2/año frente a 0,54.
+  - Validación: IR +0,68, Sharpe 0,38 frente a 0,29; ΔSharpe +0,09 con IC95 [−0,09, +0,28]. Placebo p = 0,025 (en train, p = 0,69). Momentum: IR +0,09, correlación de las activas +0,33. El IR positivo desaparece con costes de 25 pb (+0,19).
+  - **Puerta de la fase 6: CERRADA** (IC en train h=5 con t = −1,90). No hay PPO.
+  - Exploratorio (contrario, λ < 0): en train es positivo (IR +0,36) y en validación, negativo (−0,54). **El signo cambia entre periodos**, lo que confirma que invertirlo habría sido snooping.
+  - Lectura honesta: no hay una señal estable. Train y validación se contradicen y 2 años de validación no bastan para decidir.
+- Fase actual: 7 (evaluación final en test, una sola vez). Antes: congelar la configuración con un tag.

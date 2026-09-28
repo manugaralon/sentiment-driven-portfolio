@@ -55,6 +55,17 @@ signal:
   min_history: 20  # "surprise" variant: articles a ticker needs before its baseline counts
   ic_horizons: [1, 5, 20]  # sessions held after execution
 
+strategy:
+  variant: surprise  # chosen in phase 4 by design (no permanent tilt to always-upbeat tickers)
+  lambdas: [0.25, 0.5, 1.0]  # grid with the windows above; picked on train by IR vs EW
+  exploratory_lambdas: [-0.25, -0.5, -1.0]  # contrarian, EXPLORATORY: sign seen in the train IC
+  z_cap: 2.0
+  weight_bounds: [0.5, 2.0]  # in units of 1/n
+  placebo_draws: 200
+  bootstrap_reps: 2000
+  bootstrap_block: 20  # sessions
+  gate_ic_horizon: 5  # the phase-6 gate needs train IC t > 2 at this horizon (weekly holding)
+
 backtest:
   cost_bps: 10  # per dollar traded (applied to sum |w_target - w_drifted|)
   cost_sensitivity_bps: [0, 5, 10, 25]
