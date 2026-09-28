@@ -65,6 +65,7 @@ strategy:
   bootstrap_reps: 2000
   bootstrap_block: 20  # sessions
   gate_ic_horizon: 5  # the phase-6 gate needs train IC t > 2 at this horizon (weekly holding)
+  frozen: {window: 10, lambda: 0.25}  # chosen on train in phase 5; the only config run on test
 
 backtest:
   cost_bps: 10  # per dollar traded (applied to sum |w_target - w_drifted|)

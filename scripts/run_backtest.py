@@ -3,7 +3,12 @@
 Baselines: weekly equal-weight (EW) vs SPY buy-and-hold. Sentiment tilt: the (N, lambda) grid is
 chosen on train by information ratio vs EW, then confirmed on validation next to the controls
 (placebo, momentum tilt, block bootstrap). The test period is cut off before anything is computed.
+
+`--final` (phase 7, run once, after the `pre-test-freeze` tag): the frozen configuration from
+config.yaml on the test period. Nothing is selected there; it only reports.
 """
+
+import argparse
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,7 +30,7 @@ from sentiment_portfolio.stats import (
 )
 from sentiment_portfolio.strategies import equal_weight, tilt
 
-COLORS = {"Equal-weight": "#2a78d6", "SPY buy-and-hold": "#eb6834"}
+PALETTE = ["#2a78d6", "#eb6834", "#1a9e5a", "#8a5cc2"]  # by position in the results dict
 INK, INK_MUTED, SURFACE = "#0b0b0b", "#52514e", "#fcfcfb"
 
 
@@ -37,14 +42,15 @@ def metrics_table(results: dict, periods: dict, rf: pd.Series) -> pd.DataFrame:
     return pd.DataFrame(rows).T
 
 
-def plot(results: dict, val_start: str, costs_bps: float, path) -> None:
+def plot(returns: dict[str, pd.Series], title: str, path, split: tuple[str, str, str] | None = None) -> None:
+    """Equity (log) and drawdown. `split` = (date, left label, right label) draws a period cut."""
     fig, (ax_eq, ax_dd) = plt.subplots(
         2, 1, figsize=(10, 6.5), sharex=True, gridspec_kw={"height_ratios": [2, 1]}, facecolor=SURFACE
     )
-    for name, res in results.items():
-        equity = (1 + res.returns).cumprod()
+    for (name, r), color in zip(returns.items(), PALETTE, strict=False):
+        equity = (1 + r).cumprod()
         drawdown = equity / equity.cummax() - 1
-        ax_eq.plot(equity.index, equity, color=COLORS[name], lw=1.5, label=name)
+        ax_eq.plot(equity.index, equity, color=color, lw=1.5, label=name)
         ax_eq.annotate(
             f"{name}  {equity.iloc[-1]:.2f}x",
             (equity.index[-1], equity.iloc[-1]),
@@ -54,16 +60,14 @@ def plot(results: dict, val_start: str, costs_bps: float, path) -> None:
             fontsize=9,
             color=INK,
         )
-        ax_dd.plot(drawdown.index, drawdown * 100, color=COLORS[name], lw=1.5, label=name)
+        ax_dd.plot(drawdown.index, drawdown * 100, color=color, lw=1.5, label=name)
 
     ax_eq.set_yscale("log")
     ax_eq.yaxis.set_major_locator(LogLocator(base=10, subs=[1, 1.5, 2, 3, 5, 7]))
     ax_eq.yaxis.set_major_formatter(FuncFormatter(lambda y, _: f"{y:g}x"))
     ax_eq.yaxis.set_minor_formatter(NullFormatter())
     ax_eq.set_ylabel("Growth of $1 (log scale)", color=INK_MUTED)
-    ax_eq.set_title(
-        f"Baselines on train + validation, net of {costs_bps:g} bps costs", loc="left", color=INK, fontsize=12
-    )
+    ax_eq.set_title(title, loc="left", color=INK, fontsize=12)
     ax_eq.legend(loc="upper left", frameon=False, labelcolor=INK)
     ax_dd.set_ylabel("Drawdown (%)", color=INK_MUTED)
     for ax in (ax_eq, ax_dd):
@@ -74,26 +78,15 @@ def plot(results: dict, val_start: str, costs_bps: float, path) -> None:
             ax.spines[side].set_visible(False)
         for side in ("left", "bottom"):
             ax.spines[side].set_color("#c9c8c2")
-        ax.axvline(pd.Timestamp(val_start), color=INK_MUTED, lw=0.8, ls="--")
-    ax_eq.text(
-        pd.Timestamp(val_start),
-        1.01,
-        " validation →",
-        transform=ax_eq.get_xaxis_transform(),
-        color=INK_MUTED,
-        fontsize=9,
-    )
-    ax_eq.text(
-        pd.Timestamp(val_start),
-        1.01,
-        "← train ",
-        transform=ax_eq.get_xaxis_transform(),
-        color=INK_MUTED,
-        fontsize=9,
-        ha="right",
-    )
+    if split:
+        at, left, right = pd.Timestamp(split[0]), split[1], split[2]
+        for ax in (ax_eq, ax_dd):
+            ax.axvline(at, color=INK_MUTED, lw=0.8, ls="--")
+        kwargs = {"transform": ax_eq.get_xaxis_transform(), "color": INK_MUTED, "fontsize": 9}
+        ax_eq.text(at, 1.01, f" {right} →", **kwargs)
+        ax_eq.text(at, 1.01, f"← {left} ", ha="right", **kwargs)
     fig.tight_layout()
-    fig.subplots_adjust(right=0.84)
+    fig.subplots_adjust(right=0.80)
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=150, facecolor=SURFACE)
 
@@ -265,14 +258,97 @@ def sentiment_study(cfg, returns, rf, decisions, ew_targets, ew, spy, periods) -
     )
 
 
+def final_evaluation(cfg, returns, rf, decisions, ew_targets, ew, spy) -> None:
+    """Phase 7: the frozen tilt and its controls on the test period. Reports only; selects nothing."""
+    assets, st = list(cfg["universe"]), cfg["strategy"]
+    n, lam = st["frozen"]["window"], st["frozen"]["lambda"]
+    cost = cfg["backtest"]["cost_bps"]
+    test = {"test": cfg["dates"]["test"]}
+    s, e = cfg["dates"]["test"]
+    stored = pd.read_parquet(project_path(cfg["paths"]["processed"]) / "signals.parquet")
+    z = stored[f"{st['variant']}_{n}"].unstack()[assets]
+    bt = TiltBacktest(returns[assets], decisions, cfg)
+    fmt = {"float_format": lambda x: f"{x:7.3f}"}
+
+    chosen = bt.run(z, lam, cost)
+    momentum = bt.run(cross_sectional_z(past_returns(returns[assets], n)), lam, cost)
+    rows = {
+        "Equal-weight": ew,
+        "SPY buy-and-hold": spy,
+        f"Sentiment tilt N={n} λ={lam}": chosen,
+        f"Momentum tilt {n}d λ={lam}": momentum,
+    }
+    table = metrics_table(rows, test, rf)
+    table["ir_vs_ew"] = [
+        information_ratio(res.returns.loc[s:e], ew.returns) if res is not ew else np.nan
+        for res in rows.values()
+    ]
+    print(f"\n== FINAL: test {s} -> {e}, frozen config ({st['variant']}, N={n}, λ={lam}, {cost} bps) ==")
+    print(table.to_string(**fmt))
+    active = pd.DataFrame(
+        {"sentiment": chosen.returns - ew.returns, "momentum": momentum.returns - ew.returns}
+    )
+    print(f"  corr of active returns (sentiment vs momentum): {active.loc[s:e].corr().iloc[0, 1]:+.2f}")
+
+    paired = newey_west_mean(active["sentiment"].loc[s:e], lags=5)
+    print("\n== Paired test on daily active return (tilt - EW), Newey-West lag 5 ==")
+    print(f"  mean {paired['mean'] * 252:+.4f}/year, t = {paired['t']:+.2f}")
+
+    a, b = chosen.returns.loc[s:e], ew.returns.loc[s:e]
+    diffs = sharpe_diff_bootstrap(a, b, rf, st["bootstrap_block"], st["bootstrap_reps"])
+    point = (
+        summary(a, chosen.turnover.loc[s:e], rf)["sharpe"] - summary(b, ew.turnover.loc[s:e], rf)["sharpe"]
+    )
+    print(f"\n== Block bootstrap of Sharpe(tilt) - Sharpe(EW), {st['bootstrap_block']}-day blocks ==")
+    print(
+        f"  ΔSharpe {point:+.3f}, 95% CI [{np.percentile(diffs, 2.5):+.3f}, "
+        f"{np.percentile(diffs, 97.5):+.3f}], P(Δ <= 0) = {(diffs <= 0).mean():.2f}"
+    )
+
+    rng = np.random.default_rng(0)
+    actual = period_stats(chosen, ew, rf, test)[("test", "ir_vs_ew")]
+    placebo = pd.Series(
+        [
+            period_stats(bt.run(permute_across_tickers(z.loc[decisions], rng), lam, cost), ew, rf, test)[
+                ("test", "ir_vs_ew")
+            ]
+            for _ in range(st["placebo_draws"])
+        ]
+    )
+    p_value = (1 + (placebo >= actual).sum()) / (1 + len(placebo))
+    print(f"\n== Placebo, {st['placebo_draws']} draws ==")
+    print(
+        f"  actual IR {actual:+.3f} | placebo median {placebo.median():+.3f}, "
+        f"90% range [{placebo.quantile(0.05):+.3f}, {placebo.quantile(0.95):+.3f}] | p = {p_value:.3f}"
+    )
+
+    print("\n== Cost sensitivity ==")
+    for bps in cfg["backtest"]["cost_sensitivity_bps"]:
+        stats = period_stats(bt.run(z, lam, bps), run_backtest(returns[assets], ew_targets, bps), rf, test)
+        print(f"  {bps:>3} bps: sharpe {stats[('test', 'sharpe')]:.3f} IR {stats[('test', 'ir_vs_ew')]:+.3f}")
+
+    h = st["gate_ic_horizon"]
+    ic = newey_west_mean(cross_sectional_ic(z.loc[s:e], forward_returns(returns[assets], h)), lags=h + n)
+    print(f"\n== Signal IC on test (h={h}, NW lag {h + n}) ==")
+    print(f"  mean {ic['mean']:+.4f}, 95% CI [{ic['lo95']:+.4f}, {ic['hi95']:+.4f}], t = {ic['t']:+.2f}")
+
+    in_test = {name: res.returns.loc[s:e] for name, res in rows.items()}
+    out = project_path(cfg["paths"]["figures"]) / "final_test.png"
+    plot(in_test, f"Test {s[:7]} → {e[:7]}, frozen configuration, net of {cost:g} bps", out)
+    print(f"\nsaved {out}")
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--final", action="store_true", help="phase 7: open the test period (run once)")
+    final = parser.parse_args().final
     cfg = load_config()
     assets, bench = list(cfg["universe"]), cfg["benchmark"]
     dates, bt = cfg["dates"], cfg["backtest"]
 
     close = pd.read_parquet(project_path(cfg["paths"]["close"]))
     returns, rf = market_data(close, assets, bench, cfg["risk_free"])
-    returns = returns.loc[: dates["validation"][1]]  # never touch the test period here
+    returns = returns.loc[: dates["test" if final else "validation"][1]]  # test only with --final
     sessions = returns.index
 
     decisions = weekly_decision_dates(sessions[sessions >= dates["train"][0]])
@@ -283,6 +359,11 @@ def main() -> None:
         "Equal-weight": run_backtest(returns[assets], ew_targets, bt["cost_bps"]),
         "SPY buy-and-hold": run_backtest(returns[[bench]], spy_targets, bt["cost_bps"]),
     }
+    if final:
+        final_evaluation(
+            cfg, returns, rf, decisions, ew_targets, results["Equal-weight"], results["SPY buy-and-hold"]
+        )
+        return
     periods = {"train": dates["train"], "validation": dates["validation"]}
     formed = ew_targets.index[0].date()
     print(f"Metrics net of {bt['cost_bps']} bps (portfolio formed at the close of {formed}):")
@@ -295,7 +376,13 @@ def main() -> None:
         print(f"  {bps:>3} bps: ann_return {m['ann_return']:.4f}  sharpe {m['sharpe']:.3f}")
 
     out = project_path(cfg["paths"]["figures"]) / "baselines_trainval.png"
-    plot(results, dates["validation"][0], bt["cost_bps"], out)
+    title = f"Baselines on train + validation, net of {bt['cost_bps']:g} bps costs"
+    plot(
+        {name: res.returns for name, res in results.items()},
+        title,
+        out,
+        split=(dates["validation"][0], "train", "validation"),
+    )
     print(f"\nsaved {out}")
 
     sentiment_study(
