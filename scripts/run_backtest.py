@@ -50,20 +50,11 @@ def plot(returns: dict[str, pd.Series], title: str, path, split: tuple[str, str,
     for (name, r), color in zip(returns.items(), PALETTE, strict=False):
         equity = (1 + r).cumprod()
         drawdown = equity / equity.cummax() - 1
-        ax_eq.plot(equity.index, equity, color=color, lw=1.5, label=name)
-        ax_eq.annotate(
-            f"{name}  {equity.iloc[-1]:.2f}x",
-            (equity.index[-1], equity.iloc[-1]),
-            xytext=(6, 0),
-            textcoords="offset points",
-            va="center",
-            fontsize=9,
-            color=INK,
-        )
+        ax_eq.plot(equity.index, equity, color=color, lw=1.5, label=f"{name}  ({equity.iloc[-1]:.2f}x)")
         ax_dd.plot(drawdown.index, drawdown * 100, color=color, lw=1.5, label=name)
 
     ax_eq.set_yscale("log")
-    ax_eq.yaxis.set_major_locator(LogLocator(base=10, subs=[1, 1.5, 2, 3, 5, 7]))
+    ax_eq.yaxis.set_major_locator(LogLocator(base=10, subs=[1, 1.25, 1.5, 2, 3, 5, 7]))
     ax_eq.yaxis.set_major_formatter(FuncFormatter(lambda y, _: f"{y:g}x"))
     ax_eq.yaxis.set_minor_formatter(NullFormatter())
     ax_eq.set_ylabel("Growth of $1 (log scale)", color=INK_MUTED)
@@ -86,7 +77,6 @@ def plot(returns: dict[str, pd.Series], title: str, path, split: tuple[str, str,
         ax_eq.text(at, 1.01, f" {right} →", **kwargs)
         ax_eq.text(at, 1.01, f"← {left} ", ha="right", **kwargs)
     fig.tight_layout()
-    fig.subplots_adjust(right=0.80)
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=150, facecolor=SURFACE)
 

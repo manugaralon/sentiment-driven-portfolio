@@ -1,0 +1,28 @@
+
+== FINAL: test 2024-01-01 -> 2026-08-31, frozen config (surprise, N=10, λ=0.25, 10 bps) ==
+                                 ann_return  ann_vol  sharpe  max_drawdown  ann_turnover  ir_vs_ew
+Equal-weight               test       0.211    0.130   1.207        -0.155         0.673       NaN
+SPY buy-and-hold           test       0.211    0.157   1.027        -0.188         0.000     0.037
+Sentiment tilt N=10 λ=0.25 test       0.189    0.131   1.060        -0.150         3.958    -0.979
+Momentum tilt 10d λ=0.25   test       0.173    0.128   0.974        -0.168         4.647    -1.402
+  corr of active returns (sentiment vs momentum): +0.02
+
+== Paired test on daily active return (tilt - EW), Newey-West lag 5 ==
+  mean -0.0190/year, t = -1.64
+
+== Block bootstrap of Sharpe(tilt) - Sharpe(EW), 20-day blocks ==
+  ΔSharpe -0.147, 95% CI [-0.343, +0.020], P(Δ <= 0) = 0.96
+
+== Placebo, 200 draws ==
+  actual IR -0.979 | placebo median -0.781, 90% range [-1.775, +0.428] | p = 0.657
+
+== Cost sensitivity ==
+    0 bps: sharpe 1.120 IR -0.641
+    5 bps: sharpe 1.090 IR -0.810
+   10 bps: sharpe 1.060 IR -0.979
+   25 bps: sharpe 0.969 IR -1.478
+
+== Signal IC on test (h=5, NW lag 15) ==
+  mean -0.0130, 95% CI [-0.0632, +0.0371], t = -0.51
+
+saved /home/manuel/Desktop/PROJECTS/sentiment_driven_portfolio/reports/figures/final_test.png

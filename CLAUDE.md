@@ -78,4 +78,8 @@ Referencias (inspiración, no plantilla que haya que respetar):
   - **Puerta de la fase 6: CERRADA** (IC en train h=5 con t = −1,90). No hay PPO.
   - Exploratorio (contrario, λ < 0): en train es positivo (IR +0,36) y en validación, negativo (−0,54). **El signo cambia entre periodos**, lo que confirma que invertirlo habría sido snooping.
   - Lectura honesta: no hay una señal estable. Train y validación se contradicen y 2 años de validación no bastan para decidir.
-- Fase actual: 7 (evaluación final en test, una sola vez). Antes: congelar la configuración con un tag.
+- Fase 7 (test): HECHA el 2026-09-28. Tags `v1-frozen` (config) y `pre-test-freeze` (código de `--final`), creados antes de la única ejecución; la salida está en `reports/final_test_output.txt`.
+  - Test: el tilt pierde contra EW. Sharpe 1,06 frente a 1,21; IR −0,98; ΔSharpe −0,15 con IC95 [−0,34, +0,02]; test pareado t = −1,64; placebo p = 0,66; IC h=5 −0,013 (t = −0,5). Con 0 pb también pierde (IR −0,64). Momentum: IR −1,40, correlación de las activas +0,02.
+  - La ventaja de validación era ruido. Conclusión en el README, con la sección "What this does NOT show".
+  - Único cambio después del test: estético (valor final en la leyenda de la figura). Se comprobó que los números son idénticos.
+- Proyecto cerrado. Pendiente, a elección de Manuel: crear el remoto en GitHub y hacer push (tags incluidos).
