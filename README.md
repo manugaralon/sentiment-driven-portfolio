@@ -38,6 +38,7 @@ python scripts/run_backtest.py      # baselines on train + validation -> reports
 python scripts/download_news.py     # Alpaca/Benzinga news, monthly chunks (~30 min, resumable)
 python scripts/news_eda.py          # coverage, relevance, timestamps -> reports/figures/
 python scripts/score_news.py        # FinBERT scores, cached on disk (~1 h on CPU, resumable)
+python scripts/build_signal.py      # daily signal panel + IC analysis on train -> reports/figures/
 pytest                              # fast tests; `pytest -m slow` also loads the real FinBERT
 ```
 
@@ -56,4 +57,8 @@ pytest                              # fast tests; `pytest -m slow` also loads th
   with at most 5 symbols (more are lists of stocks).
 - **FinBERT** (pinned revision) scores each headline as P(positive) - P(negative); labels are read
   from the model config, never hard-coded.
+- **Signal**: mean headline score over the last N sessions (article-weighted), z-scored across
+  tickers; tickers without news get z = 0 (equal weight). A "surprise" variant first subtracts each
+  ticker's own mean score from before the window, so a company with always-upbeat coverage is not
+  permanently overweighted. A truncation test checks the signal up to T ignores news after T.
 - **Test period (2024-01 to 2026-08) is untouched** until the final evaluation.

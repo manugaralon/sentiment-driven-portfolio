@@ -61,5 +61,15 @@ Referencias (inspiración, no plantilla que haya que respetar):
     - Horas ET: 34 % preapertura, 52 % en sesión, 10,5 % tras el cierre y 4 % en fin de semana. La zona horaria es correcta (los "pre-market" tienen mediana a las 8 h).
     - Boilerplate: ratings de analistas 7,5 %, "options activity" 4 % y earnings 8 %. No se excluye ninguna categoría; las listas ya caen por el filtro de símbolos.
     - Se mantienen el inicio en 2016-01 y el grid N ∈ {5, 10, 20}.
-- Fase actual: 3 (FinBERT con caché y alineación temporal con tests).
+- Fase 3 (FinBERT, caché y alineación): HECHA el 2026-09-28.
+  - 45.896 titulares únicos relevantes (2015-10 → 2026-08) puntuados y cacheados; al relanzar, el 100 % sale de caché. Unos 14 titulares/s en CPU con lotes ordenados por longitud.
+  - Train: media +0,05; un 31 % en [−0,1, 0,1]. Sesgos por ticker: DUK +0,16, JNJ +0,16, WFC −0,11. Los ratings de analistas puntúan +0,28 de media.
+  - Ruido visto en la revisión manual: titulares de movimiento de precio ("Shares Fall…") que van *detrás* del precio, y algún error ("Amazon Breaches $500" sale −0,91).
   - Hook de pre-commit activado (`.claude/quality-gate-precommit`, ignorado en git). Su lint se salta porque ruff no está en el PATH global.
+- Fase 4 (señal y análisis del IC en train): HECHA el 2026-09-28.
+  - `signals.py`, `stats.py`, `scripts/build_signal.py` y `tests/test_signal.py`. El test de truncado pasa y detecta un look-ahead metido a propósito. `data/processed/signals.parquet` guarda 6 señales (raw/surprise × N) para todo el periodo.
+  - Variante **sorpresa**: resta la media propia del ticker con los artículos *anteriores* a la ventana; exige ≥ 20 artículos. Con menos de 3 tickers con noticias en una sesión, z = 0 para todos. IC95 con Newey-West, lag = h + N.
+  - Bug corregido: `unstack()` dejaba NaN en lugar de 0 en el panel y apagaba la variante sorpresa.
+  - Resultado en train: IC a futuro ≈ 0 y **negativo en las 18 combinaciones**. El mejor es surprise N=5, h=20, con −0,05 y t = −2,7. Con la rentabilidad **pasada** es fuertemente positivo (+0,09 a +0,17, t de 5 a 8): las noticias van detrás del precio. La rentabilidad pasada por sí sola no predice (|t| < 1,7), así que el signo negativo no es reversión de precio.
+  - Decisión para la fase 5 (2026-09-28): **no se invierte el signo** (sería data snooping). La fase 5 sigue el plan, con tilt positivo y el grid completo; lo esperado es que no bata a EW. El tilt contrario (λ < 0) va solo como análisis exploratorio etiquetado, confirmado en validación, y no cuenta para la puerta de la fase 6. Variante: **sorpresa**, por diseño (evita el tilt fijo hacia DUK y JNJ), no por su IC.
+- Fase actual: 5 (estrategia de tilt en train y validación).

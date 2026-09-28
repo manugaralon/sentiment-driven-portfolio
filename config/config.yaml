@@ -49,6 +49,12 @@ finbert:
   batch_size: 16  # with length-sorted batches: ~14 headlines/s on this 4-core VM
   chunk_size: 1000  # the cache is saved after every chunk (resumable)
 
+signal:
+  windows: [5, 10, 20]  # N sessions of news in the window mean
+  min_names: 3  # fewer tickers with news on a session -> every z is 0 (EW)
+  min_history: 20  # "surprise" variant: articles a ticker needs before its baseline counts
+  ic_horizons: [1, 5, 20]  # sessions held after execution
+
 backtest:
   cost_bps: 10  # per dollar traded (applied to sum |w_target - w_drifted|)
   cost_sensitivity_bps: [0, 5, 10, 25]
@@ -58,4 +64,5 @@ paths:
   close: data/raw/prices/close.parquet
   news: data/raw/news
   finbert_cache: data/cache/finbert
+  processed: data/processed
   figures: reports/figures
