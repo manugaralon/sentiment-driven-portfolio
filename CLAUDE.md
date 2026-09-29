@@ -28,7 +28,7 @@ Referencias (inspiración, no plantilla que haya que respetar):
 
 ## Reglas del dominio (no negociables)
 1. **Sin look-ahead.** Una noticia publicada en el día t solo puede afectar a la decisión que se ejecuta en t+1 (o después del cierre, según su timestamp). Cualquier join noticias–precios debe dejar esto explícito y con test.
-2. **Split temporal.** Train / validación / test por fechas, nunca aleatorio. El test no se toca hasta el final.
+2. **Split temporal.** Train / validación / test por fechas, nunca aleatorio. El test ya se abrió una vez (fase 7, tag `pre-test-freeze`): nada se elige mirándolo, y cualquier evaluación posterior en test se documenta como post-hoc.
 3. **Siempre contra baselines.** Toda estrategia se compara con equal-weight y buy-and-hold del índice, con costes de transacción incluidos.
 4. **Métricas mínimas:** rentabilidad anualizada, volatilidad, Sharpe, máximo drawdown, turnover.
 5. **Honestidad estadística.** Con uno o dos años de datos diarios, una diferencia de Sharpe no demuestra nada por sí sola. Dilo cuando toque.
@@ -41,15 +41,15 @@ Referencias (inspiración, no plantilla que haya que respetar):
   - Noticias: Alpaca News API (Benzinga), de 2016-01 a 2026-08, con `created_at` UTC. FNSPID se descartó por timestamps poco fiables y porque termina en 2023.
   - Universo ex-ante (anti-supervivencia), verificado con SEC EDGAR: AAPL, GOOGL, AMZN, PG, JNJ, WFC, XOM, BA y DUK. WFC sustituye a JPM porque era mayor a 2015-12.
   - Split: train 2016–2021, validación 2022–2023, test 2024-01 → 2026-08. El test se abre una sola vez, en la fase 7.
-  - Timing: noticias con `created_at` anterior al cierre NYSE de t entran en t. La decisión se toma el último día de la semana y se ejecuta al cierre de la sesión siguiente.
+  - Timing: cada noticia entra en la primera sesión NYSE cuyo cierre es estrictamente posterior a su `updated_at` (ver EDA de la fase 2). La decisión se toma el último día de la semana y se ejecuta al cierre de la sesión siguiente.
   - Señal: P_pos − P_neg del titular (vía `id2label`), media de N sesiones y z-score transversal. Regla de tilt con límites [0,5/n, 2/n].
   - Costes de 10 pb por dólar negociado. Sharpe sobre `^IRX`. Controles: placebo y momentum.
   - PPO (fase 6) fuera del MVP; solo entra si pasa la puerta (IC con t > 2 y el tilt bate a EW en validación).
 - Fase 1 (esqueleto, precios, motor y baselines): HECHA el 2026-09-22.
   - Convención del motor: la cartera se forma al cierre de la primera ejecución sin coste (igual para todas las estrategias) y los resultados empiezan en la sesión siguiente. Coste = c·Σ|Δw|; el turnover solo cuenta rebalanceos.
   - Train (Sharpe): EW 0,97 y SPY 0,98. Validación: EW 0,29 y SPY 0,00. El coste pesa poco en EW: el Sharpe pasa de 0,81 a 0,79 entre 0 y 25 pb.
-  - Los precios de 2024–2026 están en disco, pero ningún script los lee todavía (cortan en el fin de validación).
-- Fase 2 (noticias), en curso. Decisiones del 2026-09-22:
+  - Los precios de 2024–2026 solo los lee `scripts/run_backtest.py --final` (fase 7); el resto de scripts corta en el fin de validación.
+- Fase 2 (noticias): HECHA el 2026-09-22. Decisiones:
   - Verificado: Alpaca filtra `start`/`end` por `updated_at`, no por `created_at`. Se descarga hasta el mes actual y se filtra por `created_at` al cargar.
   - Verificado: una sola petición con todos los tickers devuelve exactamente la unión de las peticiones individuales.
   - Cobertura muy desigual: AAPL, AMZN y GOOGL tienen más de 100 artículos al mes; PG entre 1 y 14 y DUK entre 0 y 2. **Los tickers sin noticias en la ventana reciben z = 0 (peso EW)**, y el z-score se calcula solo entre los que tienen noticias; así se evita infraponderar por falta de cobertura. El universo se mantiene.
@@ -69,7 +69,6 @@ Referencias (inspiración, no plantilla que haya que respetar):
 - Fase 4 (señal y análisis del IC en train): HECHA el 2026-09-28.
   - `signals.py`, `stats.py`, `scripts/build_signal.py` y `tests/test_signal.py`. El test de truncado pasa y detecta un look-ahead metido a propósito. `data/processed/signals.parquet` guarda 6 señales (raw/surprise × N) para todo el periodo.
   - Variante **sorpresa**: resta la media propia del ticker con los artículos *anteriores* a la ventana; exige ≥ 20 artículos. Con menos de 3 tickers con noticias en una sesión, z = 0 para todos. IC95 con Newey-West, lag = h + N.
-  - Bug corregido: `unstack()` dejaba NaN en lugar de 0 en el panel y apagaba la variante sorpresa.
   - Resultado en train: IC a futuro ≈ 0 y **negativo en las 18 combinaciones**. El mejor es surprise N=5, h=20, con −0,05 y t = −2,7. Con la rentabilidad **pasada** es fuertemente positivo (+0,09 a +0,17, t de 5 a 8): las noticias van detrás del precio. La rentabilidad pasada por sí sola no predice (|t| < 1,7), así que el signo negativo no es reversión de precio.
   - Decisión para la fase 5 (2026-09-28): **no se invierte el signo** (sería data snooping). La fase 5 sigue el plan, con tilt positivo y el grid completo; lo esperado es que no bata a EW. El tilt contrario (λ < 0) va solo como análisis exploratorio etiquetado, confirmado en validación, y no cuenta para la puerta de la fase 6. Variante: **sorpresa**, por diseño (evita el tilt fijo hacia DUK y JNJ), no por su IC.
 - Fase 5 (tilt en train y validación): HECHA el 2026-09-28. `strategies.tilt` proyecta sobre [0,5/n, 2/n] con suma 1 (desplazamiento por bisección, no recortar y renormalizar). Todo en `scripts/run_backtest.py`; los parámetros, en `config.yaml` → `strategy`.
