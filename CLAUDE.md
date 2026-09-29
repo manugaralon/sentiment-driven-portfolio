@@ -82,4 +82,5 @@ Referencias (inspiración, no plantilla que haya que respetar):
   - Test: el tilt pierde contra EW. Sharpe 1,06 frente a 1,21; IR −0,98; ΔSharpe −0,15 con IC95 [−0,34, +0,02]; test pareado t = −1,64; placebo p = 0,66; IC h=5 −0,013 (t = −0,5). Con 0 pb también pierde (IR −0,64). Momentum: IR −1,40, correlación de las activas +0,02.
   - La ventaja de validación era ruido. Conclusión en el README, con la sección "What this does NOT show".
   - Único cambio después del test: estético (valor final en la leyenda de la figura). Se comprobó que los números son idénticos.
-- Proyecto cerrado. Pendiente, a elección de Manuel: crear el remoto en GitHub y hacer push (tags incluidos).
+- Proyecto cerrado. Publicado el 2026-09-29 en https://github.com/manugaralon/sentiment-driven-portfolio (público, con los tags).
+  - Cuenta: este repo va con **manugaralon**, aunque la cuenta activa de `gh` es devclibit. Hay un credential helper local (en `.git/config`) que pide el token con `gh auth token --user manugaralon`, así que `git push` funciona sin cambiar de cuenta. Para usar `gh` contra este repo: `gh auth switch --user manugaralon` y después volver.
